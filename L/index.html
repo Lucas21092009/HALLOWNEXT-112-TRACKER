@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Hollow Knight & Silksong Tracker</title>
+ <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+ <style>
+   /* ==========================================================================
+      1. VARIABLES AND GENERAL STYLES
+      ========================================================================== */
+   :root {
+     --bg-primary: #0a1128;        /* Deep Dark Blue */
+     --bg-secondary: #101f42;      /* Secondary Dark Blue */
+     --bg-card: rgba(16, 31, 66, 0.85);
+     --bg-card-hover: rgba(25, 48, 98, 0.95);
+    
+     --accent-cyan: #00f2fe;       /* Bright Cyan */
+     --accent-cyan-dark: #00b4d8;  /* Medium Cyan */
+     --accent-red: #ff4d4d;        /* Red */
+     --accent-red-dark: #c0392b;   /* Dark Red */
+     --accent-gold: #e0af68;
+     --accent-green: #2ecc71;
+     --text-main: #d0e1fd;
+     --text-muted: #799ecb;
+     --white: #ffffff;
+    
+     --border-color: rgba(0, 242, 254, 0.25);
+     --border-glow: rgba(0, 242, 254, 0.6);
+   }
+
+
+   * {
+     box-sizing: border-box;
+     margin: 0;
+     padding: 0;
+   }
+
+
+   body {
+     background-color: var(--bg-primary);
+     color: var(--text-main);
+     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+     line-height: 1.6;
+     padding: 20px;
+     min-height: 100vh;
+     position: relative;
+     overflow-x: hidden;
+     transition: background-color 0.4s ease;
+   }
+
+
+   /* Style activated when red/Silksong mode is active */
+   body.red-mode {
+     background-color: #4a0000;
+     --border-color: rgba(255, 77, 77, 0.35);
+     --border-glow: rgba(255, 0, 0, 0.7);
+   }
+
+
+   /* ==========================================================================
+      BACKGROUND PARTICLES (DREAM ESSENCES VS EMBER SPARKS)
+      ========================================================================== */
+   .particle-container {
+     position: fixed;
+     top: 0;
+     left: 0;
+     width: 100%;
+     height: 100%;
+     pointer-events: none;
+     z-index: 0;
+     overflow: hidden;
+   }
+
+
+   /* Style for Dream Essence (Hollow Knight) */
+   .particle.essence {
+     position: absolute;
+     background: radial-gradient(circle, #ffe680 0%, #e0af68 40%, rgba(224, 175, 104, 0.2) 70%, transparent 100%);
+     border-radius: 50%;
+     box-shadow: 0 0 12px #ffd700, 0 0 25px rgba(255, 215, 0, 0.8);
+     animation: floatUp linear infinite;
+     opacity: 0.8;
+   }
+
+
+   /* Style for Maximum Realism Embers (Silksong) */
+   .particle.ember {
+     position: absolute;
+     pointer-events: none;
+     z-index: 0;
+     border-radius: 1px; /* Slightly irregular shape */
+     background: #fff;
+     will-change: transform, opacity;
+     /* Additive blend for intense glow */
+     mix-blend-mode: screen;
+   }
+
+   /* Volumetric heat trail */
+   .particle.ember::after {
+     content: '';
+     position: absolute;
+     top: 50%;
+     left: 50%;
+     width: 150%;
+     height: 400%;
+     background: radial-gradient(ellipse at top, rgba(255, 150, 50, 0.4), transparent 70%);
+     transform: translate(-50%, 0);
+     filter: blur(2px);
+   }
+
+   /* Dream Essence with Official Image (Hollow Knight) */
+   .particle.essence {
+     position: absolute;
+     pointer-events: none;
+     z-index: 0;
+     background-image: url('https://static.wikia.nocookie.net/hollowknight/images/f/f3/Araldo_dei_Sogni.png/revision/latest/scale-to-width/360?cb=20210422081756&path-prefix=it');
+     background-size: contain;
+     background-repeat: no-repeat;
+     background-position: center;
+     filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+     will-change: transform, opacity;
+     mix-blend-mode: screen;
+   }
+
+   /* Pulsing aura effect around the essence */
+   .particle.essence::after {
+     content: '';
+     position: absolute;
+     top: -50%; left: -50%; width: 200%; height: 200%;
+     background: radial-gradient(circle, rgba(255, 230, 128, 0.3) 0%, transparent 70%);
+     animation: essencePulse 2s infinite ease-in-out;
+     border-radius: 50%;
+   }
+
+   @keyframes essencePulse {
+     0%, 100% { transform: scale(1); opacity: 0.3; }
+     50% { transform: scale(1.3); opacity: 0.6; }
+   }
+
+
+   .container {
+     max-width: 1050px;
+     margin: 0 auto;
+     position: relative;
+     z-index: 1;
+   }
+
+
+   /* Scrollbar */
+   ::-webkit-scrollbar { width: 8px; }
+   ::-webkit-scrollbar-track { background: var(--bg-primary); }
+   ::-webkit-scrollbar-thumb { background: #101f42; border-radius: 4px; border: 1px solid var(--border-color); }
+   ::-webkit-scrollbar-thumb:hover { background: var(--accent-cyan); }
+
+
+   /* ==========================================================================
+      2. HEADER AND PROGRESS METERS
+      ========================================================================== */
+   header {
+     text-align: center;
+     padding: 20px 0 10px 0;
+   }
+
+
+   header h1 {
+     color: var(--white);
+     font-size: 2.2rem;
+     letter-spacing: 2px;
+     text-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+     margin-bottom: 5px;
+   }
+
+
+   body.red-mode header h1 {
+     text-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+     color: #ffcccc;
+   }
+
+
+   header p {
+     color: var(--text-muted);
+     font-size: 1rem;
+   }
+
+
+   /* Main Bar */
+   .progress-container {
+     background: var(--bg-secondary);
+     border: 1px solid var(--border-color);
+     border-radius: 20px;
+     height: 28px;
+     width: 100%;
+     margin: 20px 0 15px 0;
+     overflow: hidden;
+     box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+   }
+
+
+   .progress-bar {
+     background: linear-gradient(90deg, var(--accent-cyan-dark), var(--accent-cyan));
+     height: 100%;
+     width: 0%;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     color: #000;
+     font-weight: bold;
+     font-size: 0.9rem;
+     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease;
+     box-shadow: 0 0 12px rgba(0, 242, 254, 0.5);
+   }
+
+
+   body.red-mode .progress-bar {
+     background: linear-gradient(90deg, var(--accent-red-dark), var(--accent-red));
+     box-shadow: 0 0 12px rgba(255, 77, 77, 0.6);
+     color: #fff;
+   }
+
+
+   .progress-bar.completed-112, .progress-bar.completed-100 {
+     background: linear-gradient(90deg, #f1c40f, #e67e22, #e74c3c);
+     box-shadow: 0 0 20px rgba(241, 196, 15, 0.8);
+     animation: pulseGlow 1.5s infinite alternate;
+     color: #000;
+   }
+
+
+   @keyframes pulseGlow {
+     from { box-shadow: 0 0 10px rgba(241, 196, 15, 0.6); }
+     to { box-shadow: 0 0 25px rgba(241, 196, 15, 1); }
+   }
+
+
+   /* Detailed Meters Panel */
+   .metrics-panel {
+     display: flex;
+     justify-content: space-around;
+     gap: 15px;
+     margin-bottom: 25px;
+     flex-wrap: wrap;
+   }
+
+
+   .metric-card {
+     background: var(--bg-card);
+     border: 1px solid var(--border-color);
+     padding: 12px 20px;
+     border-radius: 10px;
+     text-align: center;
+     flex: 1;
+     min-width: 180px;
+     backdrop-filter: blur(5px);
+   }
+
+
+   .metric-card h4 {
+     font-size: 0.85rem;
+     color: var(--text-muted);
+     text-transform: uppercase;
+     margin-bottom: 5px;
+   }
+
+
+   .metric-card span {
+     font-size: 1.4rem;
+     font-weight: bold;
+     color: var(--accent-gold);
+   }
+
+
+   /* ==========================================================================
+      3. NAVIGATION AND PAGES
+      ========================================================================== */
+   nav {
+     display: flex;
+     justify-content: center;
+     gap: 12px;
+     margin-bottom: 30px;
+     flex-wrap: wrap;
+   }
+
+
+   .nav-btn {
+     background: var(--accent-cyan-dark);
+     color: #000;
+     border: 1px solid var(--accent-cyan);
+     padding: 10px 22px;
+     font-size: 0.95rem;
+     font-weight: 700;
+     border-radius: 8px;
+     cursor: pointer;
+     transition: all 0.25s ease;
+     box-shadow: 0 0 8px rgba(0, 242, 254, 0.2);
+   }
+
+
+   .nav-btn:hover {
+     background: var(--accent-cyan);
+     color: #000;
+     border-color: #fff;
+     transform: translateY(-2px);
+     box-shadow: 0 0 15px rgba(0, 242, 254, 0.6);
+   }
+
+
+   .nav-btn.active {
+     background: var(--accent-cyan);
+     color: #000;
+     border-color: #fff;
+     box-shadow: 0 0 20px rgba(0, 242, 254, 0.8);
+   }
+
+
+   /* Silksong Button Style (Red by default) */
+   .nav-btn-red {
+     background: var(--accent-red-dark);
+     color: #fff;
+     border-color: var(--accent-red);
+     box-shadow: 0 0 8px rgba(255, 77, 77, 0.3);
+   }
+
+
+   .nav-btn-red:hover {
+     background: var(--accent-red);
+     color: #fff;
+     border-color: #fff;
+     box-shadow: 0 0 15px rgba(255, 77, 77, 0.7);
+   }
+
+
+   /* WHEN TOGGLED: The button becomes BLUE */
+   .nav-btn-red.active-toggle {
+     background: var(--accent-cyan) !important;
+     color: #000 !important;
+     border-color: #fff !important;
+     box-shadow: 0 0 20px rgba(0, 242, 254, 0.9) !important;
+   }
+
+
+   /* FORCED RED CLASS applied to other buttons when SILKSONG mode is active */
+   .nav-btn.forced-red {
+     background: var(--accent-red-dark) !important;
+     color: #fff !important;
+     border-color: var(--accent-red) !important;
+     box-shadow: 0 0 8px rgba(255, 77, 77, 0.3) !important;
+   }
+
+
+   .nav-btn.forced-red:hover {
+     background: var(--accent-red) !important;
+     color: #fff !important;
+     border-color: #fff !important;
+     box-shadow: 0 0 15px rgba(255, 77, 77, 0.7) !important;
+   }
+
+
+   .nav-btn.forced-red.active {
+     background: #ff0000 !important;
+     color: #fff !important;
+     border-color: #fff !important;
+     box-shadow: 0 0 20px rgba(255, 0, 0, 0.9) !important;
+   }
+
+
+   .page { display: none; }
+   .page.active { display: block; animation: fadeIn 0.4s ease; }
+
+
+   @keyframes fadeIn {
+     from { opacity: 0; transform: translateY(8px); }
+     to { opacity: 1; transform: translateY(0); }
+   }
+
+
+   /* ==========================================================================
+      4. ROUTE AND QUEST CARD STYLES
+      ========================================================================== */
+   .act-card {
+     background: var(--bg-card);
+     backdrop-filter: blur(8px);
+     border: 1px solid var(--border-color);
+     border-left: 5px solid var(--accent-cyan);
+     margin: 18px 0;
+     padding: 20px;
+     border-radius: 10px;
+     transition: all 0.3s ease;
+   }
+
+
+   body.red-mode .act-card {
+     border-left-color: var(--accent-red);
+   }
+
+
+   .act-card:hover {
+     border-color: var(--border-glow);
+     transform: translateX(4px);
+   }
+
+
+   .act-title {
+     color: var(--accent-cyan);
+     font-size: 1.25rem;
+     margin-bottom: 12px;
+   }
+
+
+   body.red-mode .act-title {
+     color: #ff9999;
+   }
+
+
+   ul { line-height: 1.8; margin-left: 20px; }
+
+
+   /* Quest Grid Styles */
+   .quest-grid {
+     display: grid;
+     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+     gap: 15px;
+     margin-top: 15px;
+   }
+
+
+   .quest-card {
+     background: var(--bg-card);
+     backdrop-filter: blur(5px);
+     border: 1px solid var(--border-color);
+     border-radius: 10px;
+     padding: 15px;
+   }
+
+
+   .quest-card h3 {
+     color: var(--accent-gold);
+     font-size: 1.1rem;
+     margin-bottom: 10px;
+     border-bottom: 1px solid var(--border-color);
+     padding-bottom: 5px;
+   }
+
+
+   .quest-list {
+     list-style: none;
+     margin-left: 0;
+   }
+
+
+   .quest-item {
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     gap: 10px;
+     padding: 6px 0;
+     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+   }
+
+
+   .quest-item span {
+     font-size: 0.9rem;
+     transition: all 0.2s ease;
+   }
+
+
+   .quest-item span.completed {
+     text-decoration: line-through;
+     color: var(--text-muted);
+     opacity: 0.6;
+   }
+
+
+   .quest-toggle-btn {
+     background: rgba(0, 242, 254, 0.15);
+     color: var(--accent-cyan);
+     border: 1px solid var(--accent-cyan);
+     padding: 4px 10px;
+     font-size: 0.8rem;
+     font-weight: bold;
+     border-radius: 6px;
+     cursor: pointer;
+     transition: all 0.2s ease;
+     white-space: nowrap;
+   }
+
+
+   body.red-mode .quest-toggle-btn {
+     background: rgba(255, 77, 77, 0.15);
+     color: #ff9999;
+     border-color: var(--accent-red);
+   }
+
+
+   .quest-toggle-btn:hover {
+     background: var(--accent-cyan);
+     color: #000;
+     box-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+   }
+
+
+   body.red-mode .quest-toggle-btn:hover {
+     background: var(--accent-red);
+     color: #fff;
+     box-shadow: 0 0 10px rgba(255, 77, 77, 0.5);
+   }
+
+
+   .quest-toggle-btn.completed {
+     background: rgba(46, 204, 113, 0.2);
+     color: var(--accent-green);
+     border-color: var(--accent-green);
+     box-shadow: 0 0 8px rgba(46, 204, 113, 0.2);
+   }
+
+
+   /* ==========================================================================
+      5. BOSS TABLE AND BUTTONS
+      ========================================================================== */
+   .boss-table-container {
+     overflow-x: auto;
+     margin-top: 15px;
+     border-radius: 10px;
+     border: 1px solid var(--border-color);
+     backdrop-filter: blur(5px);
+   }
+
+
+   table {
+     width: 100%;
+     border-collapse: collapse;
+     background: var(--bg-card);
+     text-align: left;
+   }
+
+
+   th, td {
+     padding: 12px 16px;
+     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+   }
+
+
+   th {
+     background-color: var(--bg-secondary);
+     color: var(--accent-cyan);
+     font-size: 0.85rem;
+     text-transform: uppercase;
+     letter-spacing: 1px;
+   }
+
+
+   body.red-mode th {
+     color: #ff9999;
+   }
+
+
+   tr:hover { background-color: var(--bg-card-hover); }
+
+
+   .percent-badge {
+     background: var(--accent-gold);
+     color: #000;
+     font-weight: bold;
+     padding: 3px 10px;
+     border-radius: 12px;
+     font-size: 0.85rem;
+     display: inline-block;
+   }
+
+
+   .percent-badge.zero {
+     background: rgba(255, 255, 255, 0.05);
+     color: var(--text-muted);
+     border: 1px solid rgba(255, 255, 255, 0.1);
+     font-weight: normal;
+   }
+
+
+   .tag-category {
+     color: var(--text-muted);
+     font-size: 0.8rem;
+     text-transform: uppercase;
+   }
+
+
+   .boss-name {
+     transition: all 0.3s ease;
+   }
+
+
+   .boss-name.marked {
+     text-decoration: line-through;
+     color: var(--text-muted);
+     opacity: 0.6;
+   }
+
+
+   .boss-toggle-btn {
+     background: rgba(0, 242, 254, 0.15);
+     color: var(--accent-cyan);
+     border: 1px solid var(--accent-cyan);
+     padding: 6px 14px;
+     font-size: 0.85rem;
+     font-weight: bold;
+     border-radius: 6px;
+     cursor: pointer;
+     transition: all 0.2s ease;
+   }
+
+
+   body.red-mode .boss-toggle-btn {
+     background: rgba(255, 77, 77, 0.15);
+     color: #ff9999;
+     border-color: var(--accent-red);
+   }
+
+
+   .boss-toggle-btn:hover {
+     background: var(--accent-cyan);
+     color: #000;
+     box-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+   }
+
+
+   body.red-mode .boss-toggle-btn:hover {
+     background: var(--accent-red);
+     color: #fff;
+     box-shadow: 0 0 10px rgba(255, 77, 77, 0.5);
+   }
+
+
+   .boss-toggle-btn.defeated {
+     background: rgba(46, 204, 113, 0.2);
+     color: var(--accent-green);
+     border-color: var(--accent-green);
+     box-shadow: 0 0 10px rgba(46, 204, 113, 0.2);
+   }
+ </style>
+</head>
+<body>
+
+
+ <!-- Background Particle Container (Essences or Embers) -->
+ <div class="particle-container" id="particle-container"></div>
+
+
+ <div class="container">
+   <header>
+     <h1 id="main-title">HALLOWNEXT 112% TRACKER</h1>
+     <p id="main-subtitle">Interactive Guide and Progress Tracker</p>
+    
+     <div class="progress-container">
+       <div class="progress-bar" id="main-progress">0% / 112% Completed</div>
+     </div>
+
+
+     <div class="metrics-panel">
+       <div class="metric-card">
+         <h4 id="metric-label-bosses">Bosses Completed</h4>
+         <span id="metric-bosses">0 / 47</span>
+       </div>
+       <div class="metric-card">
+         <h4 id="metric-label-percent">Total Progress</h4>
+         <span id="metric-percent">0% / 112%</span>
+       </div>
+     </div>
+   </header>
+
+
+   <nav>
+     <button class="nav-btn active" onclick="switchPage('rota', this)" id="nav-rota-btn">🗺️ Step-by-Step Route</button>
+     <button class="nav-btn" onclick="switchPage('bosses-info', this)" id="nav-info-btn">📊 Info Table</button>
+     <button class="nav-btn" onclick="switchPage('bosses-tracker', this)" id="nav-tracker-btn">⚔️ Confirm Bosses</button>
+     <button class="nav-btn" onclick="switchPage('quest-tracker', this)" id="nav-quest-btn">📜 Quests for 112%</button>
+     <button class="nav-btn nav-btn-red" onclick="toggleSilksongMode(this)" id="silksong-btn">🕷️ Silksong</button>
+   </nav>
+
+
+   <section id="page-rota" class="page active">
+     <h2 id="rota-page-title">🗺️ Optimized Exploration Route</h2>
+    
+     <div id="rota-content-container">
+       <!-- Default Hollow Knight (112%) content -->
+       <div class="act-card">
+         <h3 class="act-title">Act I: Start and Mobility</h3>
+         <ul>
+           <li><strong>Forgotten Crossroads:</strong> Defeat the Mother Fly (+1%), False Knight (+1%) and obtain Vengeful Spirit (+1%).</li>
+           <li><strong>Greenpath:</strong> Defeat Protector Hornet (+1%) and obtain the Mothwing Cloak (+2%).</li>
+           <li><strong>Mantis Cliffs:</strong> Get the Mantis Claw (+2%) and defeat the Mantis Lords (+1%).</li>
+           <li><strong>City of Tears:</strong> Upgrade the Nail (+1%), defeat the Soul Master (+1%) and acquire Desolate Dive (+1%).</li>
+         </ul>
+       </div>
+
+
+       <div class="act-card">
+         <h3 class="act-title">Act II: Expansion and Charms</h3>
+         <ul>
+           <li><strong>Crystal Peak:</strong> Obtain the Crystal Heart (+2%).</li>
+           <li><strong>Resting Grounds:</strong> Acquire the Dream Nail (+1%).</li>
+           <li><strong>Ancient Basin:</strong> Defeat the Broken Vessel (+1%) and get the Monarch Wings (+2%).</li>
+           <li><strong>Royal Waterways & Deep Nest:</strong> Dung Defender (+1%), Isma's Tear (+2%) and Nosk (+1%).</li>
+         </ul>
+       </div>
+
+
+       <div class="act-card">
+         <h3 class="act-title">Act III: Shade, Dreams and DLCs</h3>
+         <ul>
+           <li><strong>King's Edge & Abyss:</strong> Hornet Sentinel (+1%), King's Brand (+2%), Shade Cloak (+2%) and Abyss Shriek (+1%).</li>
+           <li><strong>Dreamers (3%):</strong> Monomon, Lurien and Herrah (1% each).</li>
+           <li><strong>Dream Warriors (7%):</strong> Xero, Elder Hu, Gorb, No-Eyes, Galien, Marmu and Markoth (1% each).</li>
+           <li><strong>Dream Bosses (4%):</strong> Failed Champion, Soul Tyrant, Lost Kin and White Defender (1% each).</li>
+           <li><strong>Grimm Troupe & Coliseum (5%):</strong> Troupe Master Grimm (+1%), Nightmare King Grimm (+1%), Warrior/Conqueror/Fool Trials (+3%).</li>
+           <li><strong>Godmaster (5%):</strong> God Tuner (+1%) and Pantheons 1 to 4 (+1% each).</li>
+         </ul>
+       </div>
+     </div>
+   </section>
+
+
+   <section id="page-bosses-info" class="page">
+     <h2 id="info-page-title">📊 All Bosses</h2>
+     <p style="color: var(--text-muted); margin-bottom: 15px;" id="info-page-desc">Bosses marked with <strong>+1%</strong> add direct percentage to the save file.</p>
+
+
+     <div class="boss-table-container">
+       <table>
+         <thead>
+           <tr>
+             <th>Boss</th>
+             <th>Location</th>
+             <th>Category</th>
+             <th>Percent</th>
+           </tr>
+         </thead>
+         <tbody id="info-tbody">
+         </tbody>
+       </table>
+     </div>
+   </section>
+
+
+   <section id="page-bosses-tracker" class="page">
+     <h2 id="tracker-page-title">⚔️ Boss Tracker</h2>
+     <p style="color: var(--text-muted); margin-bottom: 15px;" id="tracker-page-desc">Mark bosses as you defeat them in your campaign!</p>
+
+
+     <div class="boss-table-container">
+       <table>
+         <thead>
+           <tr>
+             <th>Status</th>
+             <th>Boss</th>
+             <th>Location</th>
+             <th>Percent</th>
+           </tr>
+         </thead>
+         <tbody id="tracker-tbody">
+         </tbody>
+       </table>
+     </div>
+   </section>
+
+
+   <section id="page-quest-tracker" class="page">
+     <h2 id="quest-page-title">📜 Quests and Requirements for 112%</h2>
+     <p style="color: var(--text-muted); margin-bottom: 15px;" id="quest-page-desc">Mark each objective as you complete it on your journey.</p>
+
+
+     <div class="quest-grid" id="quest-grid-container">
+     </div>
+   </section>
+ </div>
+
+
+ <script>
+   let confettiTriggered = false;
+   let isSilksongMode = false;
+
+
+   // Realistic Particle System
+   const particles = [];
+   const particleContainer = document.getElementById('particle-container');
+
+   function createParticle() {
+     if (!particleContainer) return;
+     
+     if (!isSilksongMode) {
+       // Dream Essence Mode (Hollow Knight)
+       const p = document.createElement('div');
+       p.className = 'particle essence';
+       // Increased size so the official image is visible
+       const size = Math.random() * 15 + 20; 
+       p.style.width = `${size}px`;
+       p.style.height = `${size}px`;
+       
+       const data = {
+         el: p,
+         x: Math.random() * window.innerWidth,
+         y: -50, // Starts above the top
+         speed: Math.random() * 1.5 + 1,
+         rotation: Math.random() * 360,
+         rotationSpeed: (Math.random() - 0.5) * 2, // Random rotation speed
+         life: 1.0,
+         decay: Math.random() * 0.002 + 0.001 // Longer life to traverse the page
+       };
+       
+       particleContainer.appendChild(p);
+       particles.push(data);
+       return;
+     }
+
+     // Silksong Realistic Mode (Embers)
+     const p = document.createElement('div');
+     p.className = 'particle ember';
+     
+     const size = Math.random() * 3 + 1;
+     p.style.width = `${size}px`;
+     p.style.height = `${size}px`;
+     
+     const data = {
+       el: p,
+       x: Math.random() * window.innerWidth,
+       y: window.innerHeight + 10,
+       vx: (Math.random() - 0.5) * 3,
+       vy: -Math.random() * 7 - 6, // Slightly higher initial speed
+       life: 1.0,
+       // Reduced decay so the ember lives long enough to rise
+       decay: Math.random() * 0.006 + 0.003,
+       size: size,
+       wobble: Math.random() * Math.PI * 2,
+       wobbleSpeed: Math.random() * 0.1 + 0.05
+     };
+     
+     particleContainer.appendChild(p);
+     particles.push(data);
+   }
+
+   function updateParticles() {
+     const time = Date.now() * 0.001;
+     
+     for (let i = particles.length - 1; i >= 0; i--) {
+       const p = particles[i];
+       p.life -= p.decay;
+       
+       if (p.life <= 0) {
+         p.el.remove();
+         particles.splice(i, 1);
+         continue;
+       }
+       
+       if (isSilksongMode) {
+         // Silksong logic (Embers)
+         p.wobble += p.wobbleSpeed;
+         const wind = Math.sin(time + p.x * 0.01) * 0.5;
+         const turbulence = Math.cos(p.wobble) * 0.3;
+         
+         p.vx += wind + turbulence;
+         p.vy -= 0.04;
+         p.vx *= 0.985;
+         p.vy *= 0.985;
+         
+         p.x += p.vx;
+         p.y += p.vy;
+         
+         let r, g, b, glow;
+         if (p.life > 0.8) {
+           r = 255; g = 255; b = 200 + 55 * ((p.life - 0.8) / 0.2);
+           glow = `0 0 8px #fff, 0 0 15px #ffcc00`;
+         } else if (p.life > 0.5) {
+           r = 255; g = 150 + 105 * ((p.life - 0.5) / 0.3); b = 50;
+           glow = `0 0 6px #ffcc00, 0 0 12px #ff4500`;
+         } else if (p.life > 0.2) {
+           r = 255; g = 50 + 100 * ((p.life - 0.2) / 0.3); b = 20;
+           glow = `0 0 4px #ff4500, 0 0 8px #8b0000`;
+         } else {
+           r = 100 + 155 * (p.life / 0.2); g = 20; b = 10;
+           glow = `0 0 2px #8b0000`;
+         }
+         
+         const angle = Math.atan2(p.vy, p.vx) + Math.PI / 2;
+         p.el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${angle}rad) scale(${0.5 + p.life * 0.5})`;
+         p.el.style.opacity = p.life > 0.1 ? 1 : p.life / 0.1;
+         p.el.style.background = `rgb(${r}, ${g}, ${b})`;
+         p.el.style.boxShadow = glow;
+       } else {
+         // Hollow Knight logic (Essences falling and rotating)
+         p.y += p.speed; // Falls instead of rising
+         p.rotation += p.rotationSpeed;
+         
+         p.el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rotation}deg)`;
+         p.el.style.opacity = p.life > 0.2 ? 0.8 : p.life / 0.2;
+         
+         // If it passes the bottom of the page, reset life to remove
+         if (p.y > window.innerHeight + 50) p.life = 0;
+       }
+     }
+     requestAnimationFrame(updateParticles);
+   }
+
+   // Start physics loop
+   requestAnimationFrame(updateParticles);
+
+   let particleInterval = setInterval(createParticle, 300);
+
+   function updateParticleDensity() {
+     clearInterval(particleInterval);
+     // Reduced density: from 15ms to 60ms for a cleaner balanced effect
+     const speed = isSilksongMode ? 60 : 300; 
+     particleInterval = setInterval(createParticle, speed);
+     
+     // Clear particles when switching modes
+     particles.forEach(p => p.el.remove());
+     particles.length = 0;
+   }
+
+
+   const bossesData = [
+     { name: "Gruz Mother", location: "Forgotten Crossroads", category: "Base Game", percent: 1 },
+     { name: "False Knight", location: "Forgotten Crossroads", category: "Base Game", percent: 1 },
+     { name: "Mawlek (Shade)", location: "Forgotten Crossroads", category: "Base Game", percent: 1 },
+     { name: "Hornet (Protector)", location: "Greenpath", category: "Base Game", percent: 1 },
+     { name: "Mantis Lords", location: "Mantis Cliffs", category: "Base Game", percent: 1 },
+     { name: "Soul Master", location: "Soul Sanctum", category: "Base Game", percent: 1 },
+     { name: "Dung Defender", location: "Royal Waterways", category: "Base Game", percent: 1 },
+     { name: "Broken Vessel", location: "Ancient Basin", category: "Base Game", percent: 1 },
+     { name: "Nosk", location: "Deepnest", category: "Base Game", percent: 1 },
+     { name: "Watcher Knights", location: "City of Tears", category: "Base Game", percent: 1 },
+     { name: "Uumuu", location: "Teacher's Archives", category: "Base Game", percent: 1 },
+     { name: "Hornet (Sentinel)", location: "King's Edge", category: "Base Game", percent: 1 },
+     { name: "The Collector", location: "Tower of Love", category: "Base Game", percent: 1 },
+     { name: "Traitor Lord", location: "Queen's Gardens", category: "Base Game", percent: 1 },
+     { name: "Xero", location: "Resting Grounds", category: "Dream Warrior", percent: 1 },
+     { name: "Gorb", location: "Howling Cliffs", category: "Dream Warrior", percent: 1 },
+     { name: "Elder Hu", location: "Mantis Cliffs", category: "Dream Warrior", percent: 1 },
+     { name: "No-Eyes", location: "Stone Sanctuary", category: "Dream Warrior", percent: 1 },
+     { name: "Galien", location: "Deepnest", category: "Dream Warrior", percent: 1 },
+     { name: "Marmu", location: "Queen's Gardens", category: "Dream Warrior", percent: 1 },
+     { name: "Markoth", location: "King's Edge", category: "Dream Warrior", percent: 1 },
+     { name: "Failed Champion", location: "Dream Realm", category: "Dream Boss", percent: 1 },
+     { name: "Soul Tyrant", location: "Dream Realm", category: "Dream Boss", percent: 1 },
+     { name: "Lost Kin", location: "Dream Realm", category: "Dream Boss", percent: 1 },
+     { name: "White Defender", location: "Dream Realm", category: "Dream Boss", percent: 1 },
+     { name: "Grey Prince Zote", location: "Dirtmouth (Basement)", category: "Dream Boss", percent: 0 },
+     { name: "Troupe Master Grimm", location: "Dirtmouth", category: "Grimm DLC", percent: 1 },
+     { name: "Nightmare King Grimm", location: "Kingdom of Dreams", category: "Grimm DLC", percent: 1 },
+     { name: "Hive Knight", location: "The Hive", category: "Lifeblood DLC", percent: 1 },
+     { name: "Vengefly King", location: "Greenpath / Coliseum", category: "Optional", percent: 0 },
+     { name: "Giant Moss Charger", location: "Greenpath", category: "Optional", percent: 0 },
+     { name: "Soul Warrior", location: "Soul Sanctum", category: "Optional", percent: 0 },
+     { name: "Crystal Guardian", location: "Crystal Peak", category: "Optional", percent: 0 },
+     { name: "Enraged Guardian", location: "Crystal Peak", category: "Optional", percent: 0 },
+     { name: "Flukemarm", location: "Royal Waterways", category: "Optional", percent: 0 },
+     { name: "Oblobbles", location: "Colosseum of Fools", category: "Optional", percent: 0 },
+     { name: "God-Tamer", location: "Colosseum of Fools", category: "Optional", percent: 0 },
+     { name: "Zote the Mighty", location: "Colosseum of Fools", category: "Optional", percent: 0 },
+     { name: "Oro & Mato", location: "Hall of Gods (P1)", category: "Godmaster DLC", percent: 0 },
+     { name: "Paintmaster Sheo", location: "Hall of Gods (P2)", category: "Godmaster DLC", percent: 0 },
+     { name: "Nailmaster Sly", location: "Hall of Gods (P3)", category: "Godmaster DLC", percent: 0 },
+     { name: "Pure Vessel", location: "Hall of Gods (P4)", category: "Godmaster DLC", percent: 0 },
+     { name: "Sisters of Battle", location: "Hall of Gods (P5)", category: "Godmaster DLC", percent: 0 },
+     { name: "Winged Nosk", location: "Hall of Gods (P5)", category: "Godmaster DLC", percent: 0 },
+     { name: "The Hollow Knight", location: "Temple of the Black Egg", category: "Final Boss", percent: 0 },
+     { name: "The Radiance", location: "Temple of the Black Egg", category: "Final Boss", percent: 0 },
+     { name: "Absolute Radiance", location: "Hall of Gods (P5)", category: "Godmaster DLC", percent: 0 }
+   ];
+
+
+   const silksongBossesData = [
+     { name: "Bell Beast", location: "Bone Forest", category: "Act I (Area Boss)", percent: 1 },
+     { name: "The Unraveled", location: "Deep Docks", category: "Act I (Area Boss)", percent: 1 },
+     { name: "Lace (Encounter 1)", location: "Moss Grotto", category: "Act I (Encounter)", percent: 1 },
+     { name: "Master of Shakra", location: "Pharloom", category: "Act I (Optional)", percent: 1 },
+     { name: "The Widow", location: "Grey Swamp", category: "Act II (Area Boss)", percent: 1 },
+     { name: "Great Silkmother", location: "The Citadel", category: "Act III (Main Boss)", percent: 1 },
+     { name: "Phantom", location: "Void Symphony", category: "Act III (Special)", percent: 1 },
+     { name: "The First Sinner", location: "Pharloom Core", category: "Act III (Secret Boss)", percent: 1 },
+     { name: "Trobbio", location: "Citadel Stage", category: "Act II (Actor)", percent: 1 },
+     { name: "Seth", location: "Sand Sanctuary", category: "Act II (Guardian)", percent: 1 },
+     { name: "Marshwing", location: "Skies of the Grey Swamp", category: "Act II (Aerial Boss)", percent: 1 },
+     { name: "Last Judicator", location: "Citadel Gate", category: "Act II (Guardian)", percent: 1 },
+     { name: "Carmelita", location: "Coral Chambers", category: "Act II (Nobility)", percent: 1 },
+     { name: "Father of Flames", location: "Blazing Depths", category: "Act II (Forge)", percent: 1 },
+     { name: "Raving Shell", location: "Coral Rise", category: "Act II (Aquatic)", percent: 1 },
+     { name: "Tin Guardian", location: "Iron Fortress", category: "Act II (Guardian)", percent: 1 },
+     { name: "Garmond & Zaza", location: "Highroads", category: "Act I (Allies/Boss)", percent: 1 },
+     { name: "Tower Sentinel", location: "Citadel Wall", category: "Act II (Defense)", percent: 1 },
+     { name: "Wild Fly-Beast", location: "Deep Docks Tunnels", category: "Act I (Beast)", percent: 1 },
+     { name: "Void Hornet", location: "Abyssal Rift", category: "Act IV (Special)", percent: 1 },
+     { name: "Steel Assassin", location: "Pharloom Wastes", category: "Act II (Hunter)", percent: 1 },
+     { name: "Absinthe King", location: "Overgrown Ways", category: "Act II (Fungal)", percent: 1 },
+     { name: "Primordial Weaver", location: "Weaver's Lair", category: "Act III (Clan)", percent: 1 },
+     { name: "Ash Knight", location: "Grey Realm", category: "Act II (Ashes)", percent: 1 },
+     { name: "Queen of Shining Flies", location: "Luminous Caverns", category: "Act II (Insects)", percent: 1 },
+     { name: "Coral Knight", location: "Coral Rise Arena", category: "Act II (Arena)", percent: 1 },
+     { name: "Rust Lord", location: "Dullworks", category: "Act II (Industrial)", percent: 1 },
+     { name: "Bone Guardian", location: "Ossuary", category: "Act I (Catacombs)", percent: 1 },
+     { name: "Singer's Guard", location: "Coral Chambers Gate", category: "Act II (Guard)", percent: 1 },
+     { name: "Golden Sentinel", location: "High Citadel", category: "Act III (Elite)", percent: 1 },
+     { name: "Void Tentacle Beast", location: "Deep Void", category: "Act IV (Abyss)", percent: 1 },
+     { name: "Automaton Alpha", location: "Gear Core", category: "Act III (Mechanical)", percent: 1 },
+     { name: "Automaton Beta", location: "Gear Core", category: "Act III (Mechanical)", percent: 1 },
+     { name: "Spore Knight", location: "Fungal Spirals", category: "Act II (Spores)", percent: 1 },
+     { name: "Magma Brute", location: "Magma Basin", category: "Act II (Lava)", percent: 1 },
+     { name: "Ice Guardian", location: "Glacial Peak", category: "Act II (Ice)", percent: 1 },
+     { name: "Storm Weaver", location: "Celestial Spiral", category: "Act III (Skies)", percent: 1 },
+     { name: "Abyssal Diver", location: "Submerged Depths", category: "Act III (Submerged)", percent: 1 },
+     { name: "Bazaar Boss", location: "Grand Bazaar", category: "Act II (Commerce)", percent: 1 },
+     { name: "Arena Champion", location: "Pharloom Coliseum", category: "Act III (Coliseum)", percent: 1 },
+     { name: "Arena Master", location: "Pharloom Coliseum", category: "Act III (Coliseum)", percent: 1 },
+     { name: "Time Guardian", location: "Clocktower", category: "Act III (Tower)", percent: 1 },
+     { name: "Pharloom Vanguard", location: "Citadel Heights", category: "Act III (Vanguard)", percent: 1 },
+     { name: "Silk-Corrupted Hornet", location: "The Cradle", category: "Act IV (Final Boss)", percent: 1 },
+     { name: "True Singer", location: "Song Sanctuary", category: "Act III (Song)", percent: 1 },
+     { name: "Deity of Pharloom", location: "Divine Spiral", category: "Act III (Divinity)", percent: 1 },
+     { name: "Absolute Silk", location: "Void Sanctuary", category: "Act IV (Supreme)", percent: 1 },
+     { name: "Prime Weaver", location: "Deep Origin", category: "Act IV (Secret)", percent: 1 }
+   ];
+
+
+   const questsData = [
+     {
+       category: "🗡️ Nail Upgrades (4%)",
+       items: [
+         { id: "q_nail_1", text: "Sharpened Nail (+1%)", percent: 1 },
+         { id: "q_nail_2", text: "Channelled Nail (+1%)", percent: 1 },
+         { id: "q_nail_3", text: "Spiral Nail (+1%)", percent: 1 },
+         { id: "q_nail_4", text: "Pure Nail (+1%)", percent: 1 }
+       ]
+     },
+     {
+       category: "🪄 Spells and Upgrades (6%)",
+       items: [
+         { id: "q_spell_1", text: "Vengeful Spirit (+1%)", percent: 1 },
+         { id: "q_spell_2", text: "Shade Soul (+1%)", percent: 1 },
+         { id: "q_spell_3", text: "Desolate Dive (+1%)", percent: 1 },
+         { id: "q_spell_4", text: "Channelled Darkness (+1%)", percent: 1 },
+         { id: "q_spell_5", text: "Howling Wraiths (+1%)", percent: 1 },
+         { id: "q_spell_6", text: "Abyss Shriek (+1%)", percent: 1 }
+       ]
+     },
+     {
+       category: "🏃 Movement Abilities (12%)",
+       items: [
+         { id: "q_mv_1", text: "Mothwing Cloak (+2%)", percent: 2 },
+         { id: "q_mv_2", text: "Mantis Claw (+2%)", percent: 2 },
+         { id: "q_mv_3", text: "Crystal Heart (+2%)", percent: 2 },
+         { id: "q_mv_4", text: "Monarch Wings (+2%)", percent: 2 },
+         { id: "q_mv_5", text: "Isma's Tear (+2%)", percent: 2 },
+         { id: "q_mv_6", text: "Shade Cloak (+2%)", percent: 2 }
+       ]
+     },
+     {
+       category: "💎 Charms (40%)",
+       items: [
+         { id: "q_charms_all", text: "Collect all 40 Charms (+40%)", percent: 40 }
+       ]
+     },
+     {
+       category: "❤️ Health and Arts (9%)",
+       items: [
+         { id: "q_hp_masks", text: "4 Mask Shards completed (+4%)", percent: 4 },
+         { id: "q_hp_vessels", text: "3 Vessel Fragments completed (+3%)", percent: 3 },
+         { id: "q_art_1", text: "Nail Art: Great Slash (+1%)", percent: 1 },
+         { id: "q_art_2", text: "Nail Art: Cyclone Slash (+1%)", percent: 1 },
+         { id: "q_art_3", text: "Nail Art: Dash Slash (+1%)", percent: 1 }
+       ]
+     },
+     {
+       category: "👁️ The 3 Dreamers (3%)",
+       items: [
+         { id: "q_dream_lurien", text: "Lurien the Watcher, City of Tears (+1%)", percent: 1 },
+         { id: "q_dream_monomon", text: "Monomon the Teacher, Fog Canyon (+1%)", percent: 1 },
+         { id: "q_dream_herrah", text: "Herrah the Beast, Deepnest (+1%)", percent: 1 }
+       ]
+     },
+     {
+       category: "⚔️ Coliseum Trials (3%)",
+       items: [
+         { id: "q_col_1", text: "Trial of the Warrior (+1%)", percent: 1 },
+         { id: "q_col_2", text: "Trial of the Conqueror (+1%)", percent: 1 },
+         { id: "q_col_3", text: "Trial of the Fool (+1%)", percent: 1 }
+       ]
+     },
+     {
+       category: "🏛️ Hall of Gods & DLCs (6%)",
+       items: [
+         { id: "q_god_tuner", text: "God Tuner (+1%)", percent: 1 },
+         { id: "q_p1", text: "Pantheon of the Master (+1%)", percent: 1 },
+         { id: "q_p2", text: "Pantheon of the Artist (+1%)", percent: 1 },
+         { id: "q_p3", text: "Pantheon of the Sage (+1%)", percent: 1 },
+         { id: "q_p4", text: "Pantheon of the Knight (+1%)", percent: 1 },
+         { id: "q_dream_nail_awaken", text: "Awakened Dream Nail / 2400 Essence (+1%)", percent: 1 }
+       ]
+     }
+   ];
+
+
+   const silksongQuestsData = [
+     {
+       category: "🧰 Tools — 51%",
+       items: [
+         { id: "ss_tools", text: "All Tools (Red, Blue and Yellow) (+51%)", percent: 51 }
+       ]
+     },
+     {
+       category: "🧵 Silk Spools — 9%",
+       items: [
+         { id: "ss_spools", text: "9 Silk Spool upgrades (+9%)", percent: 9 }
+       ]
+     },
+     {
+       category: "🎒 Upgrades & Bags — 8%",
+       items: [
+         { id: "ss_upgrades", text: "Crafting Kit and Tool Bag upgrades (+8%)", percent: 8 }
+       ]
+     },
+     {
+       category: "💫 Abilities — 7%",
+       items: [
+         { id: "ss_abilities", text: "Needolin, Clawline, Silk Soar and others (+7%)", percent: 7 }
+       ]
+     },
+     {
+       category: "🎭 Crests — 6%",
+       items: [
+         { id: "ss_crests", text: "Reaper, Wanderer, Beast, Witch, Architect and Shaman (+6%)", percent: 6 }
+       ]
+     },
+     {
+       category: "✨ Silk Skills — 6%",
+       items: [
+         { id: "ss_skills", text: "Silkspear, Thread Storm, Cross Stitch, etc. (+6%)", percent: 6 }
+       ]
+     },
+     {
+       category: "❤️ Masks & Needle — 9%",
+       items: [
+         { id: "ss_masks", text: "5 Mask Fragments (+5%)", percent: 5 },
+         { id: "ss_needle", text: "4 Needle upgrades (+4%)", percent: 4 }
+       ]
+     },
+     {
+       category: "💗 Hearts & Special — 4%",
+       items: [
+         { id: "ss_hearts", text: "3 Silk Hearts (+3%)", percent: 3 },
+         { id: "ss_everbloom", text: "Special Item Everbloom (+1%)", percent: 1 }
+       ]
+     }
+   ];
+
+
+   document.addEventListener('DOMContentLoaded', () => {
+     buildInfoTable();
+     buildBossTrackerTable();
+     buildQuestTrackerGrid();
+     updateTotalProgress();
+   });
+
+
+   // Navigation function
+   function switchPage(pageId, btnElement) {
+     document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+     document.querySelectorAll('.nav-btn:not(#silksong-btn)').forEach(btn => btn.classList.remove('active'));
+
+
+     const targetPage = document.getElementById('page-' + pageId);
+     if (targetPage) {
+       targetPage.classList.add('active');
+     }
+    
+     if (btnElement) {
+       btnElement.classList.add('active');
+     }
+   }
+
+
+   // Toggle function for the Silksong button
+   function toggleSilksongMode(btnElement) {
+     isSilksongMode = !isSilksongMode;
+     const mainTitle = document.getElementById('main-title');
+     const mainSubtitle = document.getElementById('main-subtitle');
+     const questNavBtn = document.getElementById('nav-quest-btn');
+     const rotaPageTitle = document.getElementById('rota-page-title');
+     const rotaContainer = document.getElementById('rota-content-container');
+     const infoPageTitle = document.getElementById('info-page-title');
+     const infoPageDesc = document.getElementById('info-page-desc');
+     const trackerPageTitle = document.getElementById('tracker-page-title');
+     const trackerPageDesc = document.getElementById('tracker-page-desc');
+     const allNavBtns = document.querySelectorAll('.nav-btn:not(.nav-btn-red)');
+
+
+     if (isSilksongMode) {
+       btnElement.classList.add('active-toggle');
+       btnElement.textContent = 'Hollow Knight';
+       document.body.classList.add('red-mode');
+      
+       if (mainTitle) mainTitle.textContent = 'SILKSONG 100% TRACKER';
+       if (mainSubtitle) mainSubtitle.textContent = 'Interactive Guide and Act-Based Route for 100% in Silksong';
+       if (questNavBtn) questNavBtn.textContent = '📜 Silksong Quests (100%)';
+       if (rotaPageTitle) rotaPageTitle.textContent = '🗺️ Act-Based Route for Hollow Knight: Silksong';
+       if (infoPageTitle) infoPageTitle.textContent = '📊 Silksong Boss Info Table';
+       if (infoPageDesc) infoPageDesc.textContent = 'Complete list of the 48 Hollow Knight: Silksong bosses translated and divided by their locations and acts in Pharloom.';
+      if (trackerPageTitle) trackerPageTitle.textContent = '⚔️ Boss Tracker (Silksong)';
+      if (trackerPageDesc) trackerPageDesc.textContent = 'Mark each of the 48 translated Silksong bosses defeated to update the counter (0/48).';
+      
+      const trackerHeaderRow = document.querySelector('#page-bosses-tracker thead tr');
+      if (trackerHeaderRow) {
+        trackerHeaderRow.innerHTML = '<th>Status</th><th>Boss</th><th>Location</th>';
+      }
+      
+       // Render Silksong Route divided by Acts
+       if (rotaContainer) {
+         rotaContainer.innerHTML = `
+           <div class="act-card">
+             <h3 class="act-title">Act I: Rise of Pharloom (Moss Grotto & Bone Forest)</h3>
+             <ul>
+               <li><strong>Moss Grotto:</strong> Awaken as Hornet, recover basic jump abilities and acquire the <strong>Needolin</strong>. Face the first encounter with <strong>Lace</strong> (+1% tool/boss).</li>
+               <li><strong>Bone Forest:</strong> Explore the bone ruins, collect the first thrown tools and defeat the <strong>Bell Beast</strong> (+1%) to unlock fast travel.</li>
+               <li><strong>Deep Docks:</strong> Descend to the fiery forges, gather early silk spool fragments and defeat <strong>The Unraveled</strong> (+1%).</li>
+             </ul>
+           </div>
+
+
+           <div class="act-card">
+             <h3 class="act-title">Act II: Expansion and Upper Realms (Greymoor & The Citadel)</h3>
+             <ul>
+               <li><strong>Greymoor:</strong> Explore snowy fields and shadowed castles. Rescue Shakra to unlock full mapping and defeat the <strong>Widow</strong> to obtain the first needle upgrade (+1%).</li>
+               <li><strong>The Citadel (Lowlands):</strong> Enter the Citadel gates, collect essential crests and defeat sentinels and garrison bosses like <strong>Trobbio</strong> (+1%).</li>
+               <li><strong>Coral Rise & Blazing Depths:</strong> Collect Silk Spools to expand your bar and defeat regional bosses to secure advanced tools.</li>
+             </ul>
+           </div>
+
+
+           <div class="act-card">
+             <h3 class="act-title">Act III: Heart of Pharloom & The Farsight (93% Max)</h3>
+             <ul>
+               <li><strong>High Citadel & Core of Pharloom:</strong> Explore restricted Citadel areas and craft the crucial <strong>Farsight</strong> item to enable completion percentage display in the menu.</li>
+               <li><strong>Act 3 Completion:</strong> Defeat the <strong>Great Silkmother</strong> and <strong>The First Sinner</strong> (+2%) to obtain advanced Silk Skills.</li>
+               <li><strong>Act 3 Cap:</strong> It's possible to reach the end of Act 2 and mid Act 3 with up to <strong>93%</strong> completion before accessing the final secrets.</li>
+             </ul>
+           </div>
+
+
+           <div class="act-card">
+             <h3 class="act-title">Act IV: Post-Game, The Cradle & Final 100%</h3>
+             <ul>
+               <li><strong>The Cradle:</strong> Access the highest secret area of Pharloom after main events and face the <strong>Silk-Corrupted Hornet</strong> (+1%).</li>
+               <li><strong>Red Memory:</strong> Complete dream challenges and collect the final item <strong>Everbloom</strong> (+1%).</li>
+               <li><strong>Collection Closure:</strong> Verify all Tools, Spools, Bag Upgrades, Masks and pending Bosses on your list to hit exactly <strong>100% Completion</strong>!</li>
+             </ul>
+           </div>
+         `;
+       }
+
+
+       allNavBtns.forEach(btn => btn.classList.add('forced-red'));
+       switchPage('rota', document.getElementById('nav-rota-btn'));
+     } else {
+       btnElement.classList.remove('active-toggle');
+       btnElement.textContent = '🕷️ Silksong';
+       document.body.classList.remove('red-mode');
+      
+       if (mainTitle) mainTitle.textContent = 'HALLOWNEXT 112% TRACKER';
+       if (mainSubtitle) mainSubtitle.textContent = 'Interactive Guide and Progress Tracker';
+       if (questNavBtn) questNavBtn.textContent = '📜 Quests for 112%';
+       if (rotaPageTitle) rotaPageTitle.textContent = '🗺️ Optimized Exploration Route';
+       if (infoPageTitle) infoPageTitle.textContent = '📊 All Bosses';
+       if (infoPageDesc) infoPageDesc.textContent = 'Bosses marked with +1% add direct percentage to the save file.';
+      if (trackerPageTitle) trackerPageTitle.textContent = '⚔️ Boss Tracker';
+      if (trackerPageDesc) trackerPageDesc.textContent = 'Mark bosses as you defeat them in your campaign!';
+      
+      const trackerHeaderRow = document.querySelector('#page-bosses-tracker thead tr');
+      if (trackerHeaderRow) {
+        trackerHeaderRow.innerHTML = '<th>Status</th><th>Boss</th><th>Location</th><th>Percent</th>';
+      }
+      
+       // Restore Hollow Knight (112%) Route
+       if (rotaContainer) {
+         rotaContainer.innerHTML = `
+           <div class="act-card">
+             <h3 class="act-title">Act I: Start and Mobility</h3>
+             <ul>
+               <li><strong>Forgotten Crossroads:</strong> Defeat the Mother Fly (+1%), False Knight (+1%) and obtain Vengeful Spirit (+1%).</li>
+               <li><strong>Greenpath:</strong> Defeat Protector Hornet (+1%) and obtain the Mothwing Cloak (+2%).</li>
+               <li><strong>Mantis Cliffs:</strong> Get the Mantis Claw (+2%) and defeat the Mantis Lords (+1%).</li>
+               <li><strong>City of Tears:</strong> Upgrade the Nail (+1%), defeat the Soul Master (+1%) and acquire Desolate Dive (+1%).</li>
+             </ul>
+           </div>
+
+
+           <div class="act-card">
+             <h3 class="act-title">Act II: Expansion and Charms</h3>
+             <ul>
+               <li><strong>Crystal Peak:</strong> Obtain the Crystal Heart (+2%).</li>
+               <li><strong>Resting Grounds:</strong> Acquire the Dream Nail (+1%).</li>
+               <li><strong>Ancient Basin:</strong> Defeat the Broken Vessel (+1%) and get the Monarch Wings (+2%).</li>
+               <li><strong>Royal Waterways & Deep Nest:</strong> Dung Defender (+1%), Isma's Tear (+2%) and Nosk (+1%).</li>
+             </ul>
+           </div>
+
+
+           <div class="act-card">
+             <h3 class="act-title">Act III: Shade, Dreams and DLCs</h3>
+             <ul>
+               <li><strong>King's Edge & Abyss:</strong> Hornet Sentinel (+1%), King's Brand (+2%), Shade Cloak (+2%) and Abyss Shriek (+1%).</li>
+               <li><strong>Dreamers (3%):</strong> Monomon, Lurien and Herrah (1% each).</li>
+               <li><strong>Dream Warriors (7%):</strong> Xero, Elder Hu, Gorb, No-Eyes, Galien, Marmu and Markoth (1% each).</li>
+               <li><strong>Dream Bosses (4%):</strong> Failed Champion, Soul Tyrant, Lost Kin and White Defender (1% each).</li>
+               <li><strong>Grimm Troupe & Coliseum (5%):</strong> Troupe Master Grimm (+1%), Nightmare King Grimm (+1%), Warrior/Conqueror/Fool Trials (+3%).</li>
+               <li><strong>Godmaster (5%):</strong> God Tuner (+1%) and Pantheons 1 to 4 (+1% each).</li>
+             </ul>
+           </div>
+         `;
+       }
+
+
+       allNavBtns.forEach(btn => btn.classList.remove('forced-red'));
+       switchPage('rota', document.getElementById('nav-rota-btn'));
+     }
+
+
+     buildInfoTable();
+     buildBossTrackerTable();
+     buildQuestTrackerGrid();
+     updateTotalProgress();
+     updateParticleDensity();
+   }
+
+
+   function renderPercentBadge(percent) {
+     if (percent > 0) {
+       return `<span class="percent-badge">+${percent}%</span>`;
+     } else {
+       return `<span class="percent-badge zero">No %</span>`;
+     }
+   }
+
+
+   function buildInfoTable() {
+     const tbody = document.getElementById('info-tbody');
+     tbody.innerHTML = '';
+    
+     const activeBosses = isSilksongMode ? silksongBossesData : bossesData;
+
+
+     activeBosses.forEach(boss => {
+       const tr = document.createElement('tr');
+       tr.innerHTML = `
+         <td><strong>${boss.name}</strong></td>
+         <td>${boss.location}</td>
+         <td><span class="tag-category">${boss.category}</span></td>
+         <td>${renderPercentBadge(boss.percent)}</td>
+       `;
+       tbody.appendChild(tr);
+     });
+   }
+
+
+   function buildBossTrackerTable() {
+     const tbody = document.getElementById('tracker-tbody');
+     tbody.innerHTML = '';
+    
+     const activeBosses = isSilksongMode ? silksongBossesData : bossesData;
+
+
+     activeBosses.forEach((boss, index) => {
+       const storageKey = isSilksongMode ? `ss_boss_${index}` : `hk_boss_${index}`;
+       const isDefeated = localStorage.getItem(storageKey) === 'true';
+       const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <button class="boss-toggle-btn ${isDefeated ? 'defeated' : ''}"
+                  onclick="toggleBoss(${index}, this)">
+            ${isDefeated ? '✓ Defeated' : '⚔️ Pending'}
+          </button>
+        </td>
+        <td><strong id="boss-name-${index}" class="boss-name ${isDefeated ? 'marked' : ''}">${boss.name}</strong></td>
+        <td>${boss.location || 'Pharloom'}</td>
+        ${isSilksongMode ? '' : `<td>${renderPercentBadge(boss.percent)}</td>`}
+      `;
+       tbody.appendChild(tr);
+     });
+   }
+
+
+   function buildQuestTrackerGrid() {
+     const container = document.getElementById('quest-grid-container');
+     container.innerHTML = '';
+    
+     const qTitle = document.getElementById('quest-page-title');
+     const qDesc = document.getElementById('quest-page-desc');
+
+
+     const activeQuests = isSilksongMode ? silksongQuestsData : questsData;
+    
+     if (isSilksongMode) {
+       if (qTitle) qTitle.textContent = '📜 Quests and Requirements for 100% (Silksong)';
+       if (qDesc) qDesc.textContent = 'Mark each progress category achieved in Silksong.';
+     } else {
+       if (qTitle) qTitle.textContent = '📜 Quests and Requirements for 112%';
+       if (qDesc) qDesc.textContent = 'Mark each objective as you complete it on your journey.';
+     }
+
+
+     activeQuests.forEach(cat => {
+       const card = document.createElement('div');
+       card.className = 'quest-card';
+       let listHtml = `<ul class="quest-list">`;
+       cat.items.forEach(item => {
+         const storageKey = isSilksongMode ? `ss_quest_${item.id}` : `hk_quest_${item.id}`;
+         const isDone = localStorage.getItem(storageKey) === 'true';
+         listHtml += `
+           <li class="quest-item">
+             <span id="quest-text-${item.id}" class="${isDone ? 'completed' : ''}">${item.text}</span>
+             <button class="quest-toggle-btn ${isDone ? 'completed' : ''}"
+                     onclick="toggleQuest('${item.id}', this)">
+               ${isDone ? '✓ Done' : '⏳ Pending'}
+             </button>
+           </li>
+         `;
+       });
+       listHtml += `</ul>`;
+       card.innerHTML = `<h3>${cat.category}</h3>${listHtml}`;
+       container.appendChild(card);
+     });
+   }
+
+
+   function toggleQuest(questId, btn) {
+     const isCompleted = btn.classList.contains('completed');
+     const newState = !isCompleted;
+     const questText = document.getElementById(`quest-text-${questId}`);
+
+
+     if (newState) {
+       btn.classList.add('completed');
+       btn.textContent = '✓ Done';
+       if (questText) questText.classList.add('completed');
+     } else {
+       btn.classList.remove('completed');
+       btn.textContent = '⏳ Pending';
+       if (questText) questText.classList.remove('completed');
+     }
+
+
+     const storageKey = isSilksongMode ? `ss_quest_${questId}` : `hk_quest_${questId}`;
+     localStorage.setItem(storageKey, newState);
+     updateTotalProgress();
+   }
+
+
+   function toggleBoss(index, btn) {
+     const isCurrentlyDefeated = btn.classList.contains('defeated');
+     const newState = !isCurrentlyDefeated;
+     const bossNameElement = document.getElementById(`boss-name-${index}`);
+
+
+     if (newState) {
+       btn.classList.add('defeated');
+       btn.textContent = '✓ Defeated';
+       if (bossNameElement) bossNameElement.classList.add('marked');
+     } else {
+       btn.classList.remove('defeated');
+       btn.textContent = '⚔️ Pending';
+       if (bossNameElement) bossNameElement.classList.remove('marked');
+     }
+
+
+     const storageKey = isSilksongMode ? `ss_boss_${index}` : `hk_boss_${index}`;
+     localStorage.setItem(storageKey, newState);
+     updateTotalProgress();
+   }
+
+
+   function launchConfetti() {
+     const duration = 3 * 1000;
+     const end = Date.now() + duration;
+
+
+     (function frame() {
+       confetti({
+         particleCount: 5,
+         angle: 60,
+         spread: 55,
+         origin: { x: 0 },
+         colors: ['#00f2fe', '#00b4d8', '#e0af68', '#2ecc71']
+       });
+       confetti({
+         particleCount: 5,
+         angle: 120,
+         spread: 55,
+         origin: { x: 1 },
+         colors: ['#00f2fe', '#00b4d8', '#e0af68', '#2ecc71']
+       });
+
+
+       if (Date.now() < end) {
+         requestAnimationFrame(frame);
+       }
+     })();
+   }
+
+
+   function updateTotalProgress() {
+     const progressBar = document.getElementById('main-progress');
+     const metricBosses = document.getElementById('metric-bosses');
+     const metricPercent = document.getElementById('metric-percent');
+     const metricLabelBosses = document.getElementById('metric-label-bosses');
+     const metricLabelPercent = document.getElementById('metric-label-percent');
+
+
+     if (isSilksongMode) {
+       let silksongPercent = 0;
+       silksongQuestsData.forEach(cat => {
+         cat.items.forEach(item => {
+           if (localStorage.getItem(`ss_quest_${item.id}`) === 'true') {
+             silksongPercent += item.percent;
+           }
+         });
+       });
+
+
+       let defeatedSilksongBosses = 0;
+       silksongBossesData.forEach((boss, index) => {
+         if (localStorage.getItem(`ss_boss_${index}`) === 'true') {
+           defeatedSilksongBosses++;
+         }
+       });
+
+
+       if (metricLabelBosses) metricLabelBosses.textContent = 'Bosses Completed';
+       if (metricBosses) metricBosses.textContent = `${defeatedSilksongBosses} / 48`;
+       if (metricLabelPercent) metricLabelPercent.textContent = 'Silksong Progress';
+       if (metricPercent) metricPercent.textContent = `${silksongPercent}% / 100%`;
+
+
+       if (progressBar) {
+         const visualWidth = Math.min((silksongPercent / 100) * 100, 100);
+         progressBar.style.width = `${visualWidth}%`;
+         progressBar.textContent = `${silksongPercent}% / 100% Completed`;
+
+
+         if (silksongPercent >= 100) {
+           progressBar.classList.add('completed-100');
+           if (!confettiTriggered) {
+             launchConfetti();
+             confettiTriggered = true;
+           }
+         } else {
+           progressBar.classList.remove('completed-100');
+           confettiTriggered = false;
+         }
+       }
+     } else {
+       if (metricLabelBosses) metricLabelBosses.textContent = 'Bosses Completed';
+       if (metricLabelPercent) metricLabelPercent.textContent = 'Total Progress';
+
+
+       let currentPercent = 0;
+       let defeatedCount = 0;
+       const totalBosses = bossesData.length;
+
+
+       bossesData.forEach((boss, index) => {
+         if (localStorage.getItem(`hk_boss_${index}`) === 'true') {
+           currentPercent += boss.percent;
+           defeatedCount++;
+         }
+       });
+
+
+       questsData.forEach(cat => {
+         cat.items.forEach(item => {
+           if (localStorage.getItem(`hk_quest_${item.id}`) === 'true') {
+             currentPercent += item.percent;
+           }
+         });
+       });
+
+
+       if (progressBar) {
+         const visualWidth = Math.min((currentPercent / 112) * 100, 100);
+         progressBar.style.width = `${visualWidth}%`;
+         progressBar.textContent = `${currentPercent}% / 112% Completed`;
+
+
+         if (currentPercent >= 112) {
+           progressBar.classList.add('completed-112');
+           if (!confettiTriggered) {
+             launchConfetti();
+             confettiTriggered = true;
+           }
+         } else {
+           progressBar.classList.remove('completed-112');
+           confettiTriggered = false;
+         }
+       }
+
+
+       if (metricBosses) metricBosses.textContent = `${defeatedCount} / ${totalBosses}`;
+       if (metricPercent) metricPercent.textContent = `${currentPercent}% / 112%`;
+     }
+   }
+ </script>
+</body>
+</html>
+
